@@ -218,9 +218,19 @@ void loop() {
 void calibrateSensor() {
   double sumX = 0, sumY = 0, sumZ = 0;
 
+  Serial.println("=== Start of Calibration ===");
   for (int i = 0; i < CALIBRATION_SAMPLES; ++i) {
     double temp;
     double valX, valY, valZ;
+
+    Serial.print(valX);
+    Serial.print(",");
+
+    Serial.print(valY);
+    Serial.print(",");
+
+    Serial.print(valZ);
+    Serial.println("");
 
     dut.getMagneticFieldAndTemperature(&valX, &valY, &valZ, &temp);
     sumX += valX;
@@ -234,5 +244,6 @@ void calibrateSensor() {
   xOffset = sumX / CALIBRATION_SAMPLES;
   yOffset = sumY / CALIBRATION_SAMPLES;
   zOffset = sumZ / CALIBRATION_SAMPLES;
+  Serial.println("=== End of Calibration ===");
 }
 #endif
