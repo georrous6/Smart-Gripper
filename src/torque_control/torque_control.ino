@@ -17,8 +17,8 @@
  *
  * This is a basic example; you can be creative to improve this gripper!
  */
-#include "TLE5012Sensor.h"
-#include "TLx493D_inc.hpp"
+#include "TLE5012Sensor.h"  // angle sensor
+#include "TLx493D_inc.hpp"  // magnetic sensor
 #include "config.h"
 #include <SimpleFOC.h>
 
@@ -48,6 +48,14 @@ const int W = 9;
 const int EN_U = 6;
 const int EN_V = 5;
 const int EN_W = 3;
+
+// Button status
+int BUTTON1_STATUS = 0;
+int BUTTON2_STATUS = 0;
+
+// Magnetic field thresholds
+int MAGNETIC_FIELD_MIN_THRESHOLD = 0;
+int MAGNETIC_FIELD_MAX_THRESHOLD = 0;
 
 // BLDC driver instance
 BLDCDriver3PWM driver = BLDCDriver3PWM(U, V, W, EN_U, EN_V, EN_W);
@@ -117,6 +125,7 @@ void setup() {
   dut.begin();
   // calibrate 3D magnetic sensor to get the offsets
   calibrateSensor();
+  MAGNETIC_FIELD_MIN_THRESHOLD = 1.5 * (xOffset * xOffset + yOffset * yOffset + zOffset * zOffset);
   Serial.println("3D magnetic sensor Calibration completed.");
 
   // set the pin modes for buttons
@@ -136,16 +145,32 @@ void setup() {
 void loop() {
 #if ENABLE_MAGNETIC_SENSOR
   if (digitalRead(BUTTON1) == LOW) {
-    target_voltage = -3; // close gripper
-  } else if (digitalRead(BUTTON2) == LOW) {
-    target_voltage = 3; // open gripper
-  } else {
-    target_voltage = 0; // stop gripper
+    BUTTON1_STATUS = (BUTTON1_STATUS + 1) % 2;
+    if (BUTTON1_STATUS == 1) {
+      target_voltage = -3;  // close gripper
+    }
+    else {
+      target_voltage = 0;
+    }
+  } 
+  else if (digitalRead(BUTTON2) == LOW) {
+    BUTTON2_STATUS = (BUTTON2_STATUS + 1) % 2;
+    if (BUTTON2_STATUS == 1) {
+      target_voltage = 3;  // open gripper
+    }
+    else {
+      target_voltage = 0;
+    }
   }
+
   // read the magnetic field data
   double x, y, z;
   dut.setSensitivity(TLx493D_FULL_RANGE_e);
   dut.getMagneticField(&x, &y, &z);
+
+  if (x * x + y * y + z * z > MAGNETIC_FIELD_MIN_THRESHOLD) {
+    target_voltage = 0;
+  }
 
   // subtract the offsets from the raw data
   x -= xOffset;
