@@ -22,6 +22,14 @@ BLDCDriver3PWM driver = BLDCDriver3PWM(U, V, W, EN_U, EN_V, EN_W);
 float target_voltage = 0;
 float initialAngle = 0;
 
+enum GripperMode {
+  MODE_IDLE,
+  MODE_CLOSE_GRIP,
+  MODE_OPEN_GRIP
+};
+
+GripperMode gripperMode = MODE_IDLE;
+
 #if ENABLE_MAGNETIC_SENSOR
 using namespace ifx::tlx493d;
 TLx493D_A2B6 dut(Wire1, TLx493D_IIC_ADDR_A0_e);
@@ -95,42 +103,34 @@ void loop() {
   bool currentButton1State = digitalRead(BUTTON1);
   bool currentButton2State = digitalRead(BUTTON2);
 
-  // BUTTON1 toggling PID control
   if (currentButton1State == LOW && lastButton1State == HIGH) {
-    button1PressCount++;
-    if (button1PressCount % 2 == 0) {
-      target_voltage = 0;  // Stop motor when PID is turned off
-    }
-    delay(50); // debounce
+    gripperMode = (gripperMode == MODE_CLOSE_GRIP) ? MODE_IDLE : MODE_CLOSE_GRIP;
+    delay(50);
   }
 
-  // BUTTON2 toggling open control
   if (currentButton2State == LOW && lastButton2State == HIGH) {
-    button2PressCount++;
-    if (button2PressCount % 2 == 0) {
-      target_voltage = 0;   // Open gripper
-    }
-    delay(50); // debounce
+    gripperMode = (gripperMode == MODE_OPEN_GRIP) ? MODE_IDLE : MODE_OPEN_GRIP;
+    delay(50);
   }
 
   lastButton1State = currentButton1State;
   lastButton2State = currentButton2State;
+  Serial.print("Mode: "); Serial.print(gripperMode); Serial.println("");
 
-  if (button1PressCount % 2 == 1) {
+  if (gripperMode == MODE_CLOSE_GRIP) {
     double x, y, z;
     dut.setSensitivity(TLx493D_FULL_RANGE_e);
     dut.getMagneticField(&x, &y, &z);
     x -= xOffset; y -= yOffset; z -= zOffset;
-
-    // Serial.print(x); Serial.print(",");
-    // Serial.print(y); Serial.print(",");
-    // Serial.print(z); Serial.println("");
     closeGripperControl(x, y, z);
-  }
-
-  if (button2PressCount % 2 == 1) {
+  } 
+  else if (gripperMode == MODE_OPEN_GRIP) {
     openGripperControl();
   }
+  else {
+    target_voltage = 0;
+  }
+
 
 #endif
 
