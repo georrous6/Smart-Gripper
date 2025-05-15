@@ -1,6 +1,5 @@
 #include "TLE5012Sensor.h"  // angle sensor
 #include "TLx493D_inc.hpp"  // magnetic sensor
-#include "config.h"
 #include <SimpleFOC.h>
 
 // Define SPI pins for TLE5012 sensor
@@ -30,17 +29,13 @@ enum GripperMode {
 
 GripperMode gripperMode = MODE_IDLE;
 
-#if ENABLE_MAGNETIC_SENSOR
 using namespace ifx::tlx493d;
 TLx493D_A2B6 dut(Wire1, TLx493D_IIC_ADDR_A0_e);
 const int CALIBRATION_SAMPLES = 20;
 double xOffset = 0, yOffset = 0, zOffset = 0;
-#endif
 
-#if ENABLE_COMMANDER
 Commander command = Commander(Serial);
 void doTarget(char *cmd) { command.scalar(&target_voltage, cmd); }
-#endif
 
 bool lastButton1State = HIGH;
 bool lastButton2State = HIGH;
@@ -94,21 +89,18 @@ void setup() {
 
   initialAngle = tle5012Sensor.getSensorAngle();
 
-#if ENABLE_MAGNETIC_SENSOR
   dut.begin();
   calibrateSensor();
   Serial.println("3D magnetic sensor Calibration completed.");
 
   pinMode(BUTTON1, INPUT);
   pinMode(BUTTON2, INPUT);
-#endif
 
   Serial.println("setup done.");
 
-#if ENABLE_COMMANDER
   command.add('T', doTarget, "target voltage");
   Serial.println(F("Set the target voltage using serial terminal:"));
-#endif
+
   _delay(1000);
 }
 
@@ -125,7 +117,6 @@ void loop() {
     }
   }
 
-#if ENABLE_MAGNETIC_SENSOR
   bool currentButton1State = digitalRead(BUTTON1);
   bool currentButton2State = digitalRead(BUTTON2);
 
@@ -141,7 +132,6 @@ void loop() {
 
   lastButton1State = currentButton1State;
   lastButton2State = currentButton2State;
-  //Serial.print("Mode: "); Serial.print(gripperMode); Serial.println("");
 
   if (gripperMode == MODE_CLOSE_GRIP) {
     double x, y, z;
@@ -157,20 +147,10 @@ void loop() {
     target_voltage = 0;
   }
 
-
-#endif
-
   tle5012Sensor.update();
-#if ENABLE_READ_ANGLE
-  // Serial.println(tle5012Sensor.getSensorAngle());
-#endif
 
   motor.loopFOC();
   motor.move(target_voltage);
-
-#if ENABLE_COMMANDER
-  command.run();
-#endif
 }
 
 void closeGripperControl(double x, double y, double z) {
@@ -195,17 +175,15 @@ void closeGripperControl(double x, double y, double z) {
     last_pid_time = now;
   }
 
-  // Serial.print("Magnitude norm: "); Serial.print(norm); 
-  // Serial.print(", target voltage: "); Serial.print(target_voltage); Serial.println("");
+  Serial.print(threshold); Serial.println(",");
+  Serial.print(norm); Serial.println(",");
+  Serial.print(target_voltage); Serial.println("");
 }
 
 void openGripperControl() {
-  // float sensorAngle = tle5012Sensor.getSensorAngle();
   target_voltage = 0.5;
-  // Serial.print("Initial angle: "); Serial.print(initialAngle); Serial.print(" sensor angle: "); Serial.print(sensorAngle); Serial.println("");
 }
 
-#if ENABLE_MAGNETIC_SENSOR
 void calibrateSensor() {
   double sumX = 0, sumY = 0, sumZ = 0;
   Serial.println("=== Start of Calibration ===");
@@ -222,4 +200,3 @@ void calibrateSensor() {
   zOffset = sumZ / CALIBRATION_SAMPLES;
   Serial.println("=== End of Calibration ===");
 }
-#endif
