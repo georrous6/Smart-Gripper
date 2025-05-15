@@ -1,18 +1,18 @@
-#include "TLE5012Sensor.h"  // angle sensor
-#include "TLx493D_inc.hpp"  // magnetic sensor
+#include "TLE5012Sensor.h"
+#include "TLx493D_inc.hpp"
 #include <SimpleFOC.h>
 
-// Define SPI pins for TLE5012 sensor
+// SPI pins for TLE5012
 #define PIN_SPI1_SS0 94
 #define PIN_SPI1_MOSI 69
 #define PIN_SPI1_MISO 95
 #define PIN_SPI1_SCK 68
 
-// SPI & sensor instances
+// Initialize angle sensor
 tle5012::SPIClass3W tle5012::SPI3W1(2);
 TLE5012Sensor tle5012Sensor(&SPI3W1, PIN_SPI1_SS0, PIN_SPI1_MISO, PIN_SPI1_MOSI, PIN_SPI1_SCK);
 
-// Motor and driver
+// Motor and driver setup
 BLDCMotor motor = BLDCMotor(7, 0.24, 360, 0.000133);
 const int U = 11, V = 10, W = 9;
 const int EN_U = 6, EN_V = 5, EN_W = 3;
@@ -29,6 +29,7 @@ enum GripperMode {
 
 GripperMode gripperMode = MODE_IDLE;
 
+// Initialize 3D magnetic field sensor
 using namespace ifx::tlx493d;
 TLx493D_A2B6 dut(Wire1, TLx493D_IIC_ADDR_A0_e);
 const int CALIBRATION_SAMPLES = 20;
@@ -40,17 +41,21 @@ void doTarget(char *cmd) { command.scalar(&target_voltage, cmd); }
 bool lastButton1State = HIGH;
 bool lastButton2State = HIGH;
 
-// PID parameters
+// PID control parameters
 float kp = 1.0;
 float ki = 0.0;
 float kd = 0.0;
 float error_integral = 0;
 float last_error = 0;
-float threshold = 0.8;  // Norm threshold (adjust to your use case)
+float threshold = 0.8;
 unsigned long last_pid_time = 0;
 
 char serialCommand = '0';
 
+/**
+ * Sets gripper operation mode based on serial input.
+ * '0' = Idle, '1' = Close grip, '2' = Open grip.
+ */
 void processCommand(char cmd) {
   switch(cmd) {
     case '0':
@@ -65,6 +70,12 @@ void processCommand(char cmd) {
   }
 }
 
+/**
+ * System initialization.
+ * - Initializes sensors and motor controller.
+ * - Calibrates magnetic field offset.
+ * - Registers serial commands.
+ */
 void setup() {
   Serial.begin(115200);
   SimpleFOCDebug::enable(&Serial);
@@ -104,8 +115,13 @@ void setup() {
   _delay(1000);
 }
 
+/**
+ * Main loop:
+ * - Monitors buttons and serial commands to switch gripper mode.
+ * - Depending on mode, runs control logic to apply motor torque.
+ * - Updates motor control loop continuously.
+ */
 void loop() {
-  // Check for incoming serial commands
   if (Serial.available() > 0) {
     char c = Serial.read();
     if (c == 'T') {
@@ -133,6 +149,7 @@ void loop() {
   lastButton1State = currentButton1State;
   lastButton2State = currentButton2State;
 
+  // Execute control logic depending on gripper mode
   if (gripperMode == MODE_CLOSE_GRIP) {
     double x, y, z;
     dut.setSensitivity(TLx493D_FULL_RANGE_e);
@@ -148,11 +165,14 @@ void loop() {
   }
 
   tle5012Sensor.update();
-
   motor.loopFOC();
   motor.move(target_voltage);
 }
 
+/**
+ * PID-based torque control to maintain a target magnetic force.
+ * Computes the magnitude of the field vector and adjusts motor voltage accordingly.
+ */
 void closeGripperControl(double x, double y, double z) {
   float norm = sqrt(x * x + y * y + z * z);
   float error = norm - threshold;
@@ -180,10 +200,18 @@ void closeGripperControl(double x, double y, double z) {
   Serial.print(target_voltage); Serial.println("");
 }
 
+/**
+ * Applies a fixed torque to open the gripper.
+ * No feedback control is used in this mode.
+ */
 void openGripperControl() {
   target_voltage = 0.5;
 }
 
+/**
+ * Computes average background magnetic field to remove sensor bias.
+ * Should be run once during setup to calibrate the 3D magnetic field sensor.
+ */
 void calibrateSensor() {
   double sumX = 0, sumY = 0, sumZ = 0;
   Serial.println("=== Start of Calibration ===");
