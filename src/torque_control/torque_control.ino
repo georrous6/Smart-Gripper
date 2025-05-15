@@ -54,6 +54,22 @@ float last_error = 0;
 float threshold = 0.8;  // Norm threshold (adjust to your use case)
 unsigned long last_pid_time = 0;
 
+char serialCommand = '0';
+
+void processCommand(char cmd) {
+  switch(cmd) {
+    case '0':
+      gripperMode = MODE_IDLE;
+      break;
+    case '1':
+      gripperMode = MODE_CLOSE_GRIP;
+      break;
+    case '2':
+      gripperMode = MODE_OPEN_GRIP;
+      break;
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   SimpleFOCDebug::enable(&Serial);
@@ -97,6 +113,18 @@ void setup() {
 }
 
 void loop() {
+  // Check for incoming serial commands
+  if (Serial.available() > 0) {
+    char c = Serial.read();
+    if (c == 'T') {
+      while (!Serial.available()) {
+        delay(100);
+      }
+      serialCommand = Serial.read();
+      processCommand(serialCommand);
+    }
+  }
+
 #if ENABLE_MAGNETIC_SENSOR
   bool currentButton1State = digitalRead(BUTTON1);
   bool currentButton2State = digitalRead(BUTTON2);
