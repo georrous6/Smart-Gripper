@@ -200,9 +200,9 @@ void closeGripperControl(double x, double y, double z) {
 }
 
 void openGripperControl() {
-  float sensorAngle = tle5012Sensor.getSensorAngle();
-  target_voltage = 0.2;
-  Serial.print("Initial angle: "); Serial.print(initialAngle); Serial.print(" sensor angle: "); Serial.print(sensorAngle); Serial.println("");
+  // float sensorAngle = tle5012Sensor.getSensorAngle();
+  target_voltage = 0.5;
+  // Serial.print("Initial angle: "); Serial.print(initialAngle); Serial.print(" sensor angle: "); Serial.print(sensorAngle); Serial.println("");
 }
 
 #if ENABLE_MAGNETIC_SENSOR
