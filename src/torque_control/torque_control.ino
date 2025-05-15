@@ -42,8 +42,6 @@ Commander command = Commander(Serial);
 void doTarget(char *cmd) { command.scalar(&target_voltage, cmd); }
 #endif
 
-int button1PressCount = 0;
-int button2PressCount = 0;
 bool lastButton1State = HIGH;
 bool lastButton2State = HIGH;
 
