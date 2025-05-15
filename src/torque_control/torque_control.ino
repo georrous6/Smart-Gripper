@@ -113,7 +113,7 @@ void loop() {
 
   lastButton1State = currentButton1State;
   lastButton2State = currentButton2State;
-  Serial.print("Mode: "); Serial.print(gripperMode); Serial.println("");
+  //Serial.print("Mode: "); Serial.print(gripperMode); Serial.println("");
 
   if (gripperMode == MODE_CLOSE_GRIP) {
     double x, y, z;
@@ -167,13 +167,14 @@ void closeGripperControl(double x, double y, double z) {
     last_pid_time = now;
   }
 
-  Serial.print("Magnitude norm: "); Serial.print(norm); 
-  Serial.print(", target voltage: "); Serial.print(target_voltage); Serial.println("");
+  // Serial.print("Magnitude norm: "); Serial.print(norm); 
+  // Serial.print(", target voltage: "); Serial.print(target_voltage); Serial.println("");
 }
 
 void openGripperControl() {
   float sensorAngle = tle5012Sensor.getSensorAngle();
-  target_voltage = sensorAngle < 0.9 * initialAngle ? -3 : 0;
+  target_voltage = 0.2;
+  Serial.print("Initial angle: "); Serial.print(initialAngle); Serial.print(" sensor angle: "); Serial.print(sensorAngle); Serial.println("");
 }
 
 #if ENABLE_MAGNETIC_SENSOR
