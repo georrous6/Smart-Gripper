@@ -53,10 +53,6 @@ const int EN_W = 3;
 int BUTTON1_STATUS = 0;
 int BUTTON2_STATUS = 0;
 
-// Magnetic field thresholds
-int MAGNETIC_FIELD_MIN_THRESHOLD = 0;
-int MAGNETIC_FIELD_MAX_THRESHOLD = 0;
-
 // BLDC driver instance
 BLDCDriver3PWM driver = BLDCDriver3PWM(U, V, W, EN_U, EN_V, EN_W);
 
@@ -167,10 +163,6 @@ void loop() {
   double x, y, z;
   dut.setSensitivity(TLx493D_FULL_RANGE_e);
   dut.getMagneticField(&x, &y, &z);
-
-  if (x * x + y * y + z * z > MAGNETIC_FIELD_MIN_THRESHOLD) {
-    target_voltage = 0;
-  }
 
   // subtract the offsets from the raw data
   x -= xOffset;
