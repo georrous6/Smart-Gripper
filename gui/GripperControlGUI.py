@@ -4,10 +4,8 @@ import serial
 import serial.tools.list_ports
 import threading
 import time
-import subprocess
-import os
+from object_detector import detect_object  # Ensure file name is object_detector.py
 
-# Set the appearance mode and default color theme
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
@@ -31,13 +29,7 @@ class GripperControlGUI:
         # Title Frame
         title_frame = ctk.CTkFrame(self.window, fg_color="transparent")
         title_frame.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="ew")
-
-        title = ctk.CTkLabel(
-            title_frame,
-            text="Smart Gripper Control",
-            font=ctk.CTkFont(size=24, weight="bold"),
-        )
-        title.pack()
+        ctk.CTkLabel(title_frame, text="Smart Gripper Control", font=ctk.CTkFont(size=24, weight="bold")).pack()
 
         # Connection Frame
         conn_frame = ctk.CTkFrame(self.window)
@@ -47,62 +39,37 @@ class GripperControlGUI:
         port_label.pack(side="left", padx=10)
 
         self.port_var = ctk.StringVar()
-        self.port_combo = ctk.CTkOptionMenu(
-            conn_frame, variable=self.port_var, values=["No ports available"], width=150
-        )
+        self.port_combo = ctk.CTkOptionMenu(conn_frame, variable=self.port_var, values=["No ports available"], width=150)
         self.port_combo.pack(side="left", padx=10)
 
-        refresh_btn = ctk.CTkButton(
-            conn_frame, text="🔄 Refresh", width=100, command=self.refresh_ports
-        )
-        refresh_btn.pack(side="left", padx=5)
-
-        self.connect_btn = ctk.CTkButton(
-            conn_frame, text="🔌 Connect", width=100, command=self.toggle_connection
-        )
+        ctk.CTkButton(conn_frame, text="🔄 Refresh", width=100, command=self.refresh_ports).pack(side="left", padx=5)
+        self.connect_btn = ctk.CTkButton(conn_frame, text="🔌 Connect", width=100, command=self.toggle_connection)
         self.connect_btn.pack(side="left", padx=5)
 
         # Control Frame
         control_frame = ctk.CTkFrame(self.window)
         control_frame.grid(row=2, column=0, padx=20, pady=10, sticky="nsew")
         control_frame.grid_columnconfigure(0, weight=1)
-
-        ctk.CTkLabel(
-            control_frame,
-            text="Gripper Controls",
-            font=ctk.CTkFont(size=20, weight="bold"),
-        ).pack(pady=10)
+        ctk.CTkLabel(control_frame, text="Gripper Controls", font=ctk.CTkFont(size=20, weight="bold")).pack(pady=10)
 
         self.grip_btn = ctk.CTkButton(
-            control_frame,
-            text="🔒 Secure Grip",
-            font=ctk.CTkFont(size=16),
-            height=60,
-            fg_color="#4CAF50",
-            hover_color="#388E3C",
-            command=lambda: self.handle_button_press("grip", "1"),
+            control_frame, text="🔒 Secure Grip", font=ctk.CTkFont(size=16), height=60,
+            fg_color="#4CAF50", hover_color="#388E3C",
+            command=lambda: self.handle_button_press("grip", "1")
         )
         self.grip_btn.pack(fill="x", padx=20, pady=10)
 
         self.release_btn = ctk.CTkButton(
-            control_frame,
-            text="🔓 Release Grip",
-            font=ctk.CTkFont(size=16),
-            height=60,
-            fg_color="#4CAF50",
-            hover_color="#388E3C",
-            command=lambda: self.handle_button_press("release", "2"),
+            control_frame, text="🔓 Release Grip", font=ctk.CTkFont(size=16), height=60,
+            fg_color="#4CAF50", hover_color="#388E3C",
+            command=lambda: self.handle_button_press("release", "2")
         )
         self.release_btn.pack(fill="x", padx=20, pady=10)
 
         self.stop_btn = ctk.CTkButton(
-            control_frame,
-            text="⚠ EMERGENCY STOP",
-            font=ctk.CTkFont(size=16, weight="bold"),
-            height=50,
-            fg_color="#FFA500",
-            hover_color="#FF8C00",
-            command=self.emergency_stop,
+            control_frame, text="⚠ EMERGENCY STOP", font=ctk.CTkFont(size=16, weight="bold"), height=50,
+            fg_color="#FFA500", hover_color="#FF8C00",
+            command=self.emergency_stop
         )
         self.stop_btn.pack(fill="x", padx=20, pady=10)
 
@@ -116,38 +83,30 @@ class GripperControlGUI:
         # Weight Slider
         weight_frame = ctk.CTkFrame(slider_frame, fg_color="transparent")
         weight_frame.pack(side="left", fill="both", expand=True, padx=(0, 10))
-
         ctk.CTkLabel(weight_frame, text="Weight (0–500g)").pack()
-        self.weight_slider = ctk.CTkSlider(
-            weight_frame, from_=0, to=500, number_of_steps=100, orientation="horizontal"
-        )
+        self.weight_slider = ctk.CTkSlider(weight_frame, from_=0, to=500, number_of_steps=100, orientation="horizontal")
         self.weight_slider.set(250)
         self.weight_slider.pack()
 
         # Hardness Slider
         hardness_frame = ctk.CTkFrame(slider_frame, fg_color="transparent")
         hardness_frame.pack(side="left", fill="both", expand=True, padx=(0, 10))
-
         ctk.CTkLabel(hardness_frame, text="Hardness (0.0–1.0)").pack()
-        self.hardness_slider = ctk.CTkSlider(
-            hardness_frame, from_=0, to=1, number_of_steps=100, orientation="horizontal"
-        )
+        self.hardness_slider = ctk.CTkSlider(hardness_frame, from_=0, to=1, number_of_steps=100, orientation="horizontal")
         self.hardness_slider.set(0.5)
         self.hardness_slider.pack()
 
-        # Image Button
+        # Image Button - Detect and send result
         image_btn = ctk.CTkButton(
-            slider_frame, text="📷 Take Image", width=120, command=self.run_main_py
+            slider_frame, text="📷 Take Image", width=120, command=self.run_object_detection
         )
         image_btn.pack(side="left", padx=(10, 0))
 
-        # Status & Theme
+        # Bottom Frame
         bottom_frame = ctk.CTkFrame(self.window)
         bottom_frame.grid(row=4, column=0, padx=20, pady=(10, 20), sticky="ew")
 
-        self.status_label = ctk.CTkLabel(
-            bottom_frame, text="Status: Not Connected", font=ctk.CTkFont(size=12)
-        )
+        self.status_label = ctk.CTkLabel(bottom_frame, text="Status: Not Connected", font=ctk.CTkFont(size=12))
         self.status_label.pack(side="left", padx=10, pady=5)
 
         self.theme_switch = ctk.CTkSwitch(
@@ -163,10 +122,8 @@ class GripperControlGUI:
 
     def refresh_ports(self):
         ports = [port.device for port in serial.tools.list_ports.comports()]
-        if not ports:
-            ports = ["No ports available"]
-        self.port_combo.configure(values=ports)
-        self.port_combo.set(ports[0])
+        self.port_combo.configure(values=ports or ["No ports available"])
+        self.port_combo.set(ports[0] if ports else "No ports available")
 
     def check_port_available(self, port):
         try:
@@ -184,25 +141,14 @@ class GripperControlGUI:
                     raise Exception("No valid port selected")
 
                 if not self.check_port_available(port):
-                    try:
-                        temp_serial = serial.Serial(port)
-                        temp_serial.close()
-                    except:
-                        pass
                     time.sleep(1)
                     if not self.check_port_available(port):
-                        raise Exception(
-                            f"Port {port} is in use by another program."
-                        )
+                        raise Exception(f"Port {port} is in use by another program.")
 
                 self.serial_port = serial.Serial(port, 115200, timeout=1)
                 self.is_connected = True
-                self.connect_btn.configure(
-                    text="🔌 Disconnect", fg_color="#FF5757", hover_color="#FF3333"
-                )
-                self.status_label.configure(
-                    text=f"Status: Connected to {port}", text_color="#4CAF50"
-                )
+                self.connect_btn.configure(text="🔌 Disconnect", fg_color="#FF5757", hover_color="#FF3333")
+                self.status_label.configure(text=f"Status: Connected to {port}", text_color="#4CAF50")
                 self.port_combo.configure(state="disabled")
             except Exception as e:
                 messagebox.showerror("Connection Error", str(e))
@@ -211,9 +157,7 @@ class GripperControlGUI:
                 self.serial_port.close()
             self.is_connected = False
             self.connect_btn.configure(text="🔌 Connect", fg_color="#3B8ED0")
-            self.status_label.configure(
-                text="Status: Disconnected", text_color="gray"
-            )
+            self.status_label.configure(text="Status: Disconnected", text_color="gray")
             self.port_combo.configure(state="normal")
 
     def handle_button_press(self, button_name, command):
@@ -259,19 +203,16 @@ class GripperControlGUI:
         if not self.is_connected:
             return
         try:
-            formatted_cmd = f"T{cmd}\n"
-            self.serial_port.write(formatted_cmd.encode())
+            self.serial_port.write(f"T{cmd}\n".encode())
             self.serial_port.flush()
         except Exception as e:
             messagebox.showerror("Communication Error", str(e))
             self.toggle_connection()
 
-    def run_main_py(self):
-        try:
-            script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "object_classification", "main.py"))
-            subprocess.Popen(["python", script_path])
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to run main.py:\n{e}")
+    def run_object_detection(self):
+        result = detect_object()
+        if result:
+            self.send_command(result)
 
     def run(self):
         self.window.protocol("WM_DELETE_WINDOW", self.on_closing)
