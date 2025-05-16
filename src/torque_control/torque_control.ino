@@ -67,6 +67,12 @@ void processCommand(char cmd) {
     case '2':
       gripperMode = MODE_OPEN_GRIP;
       break;
+    case 'b':  // balloon detected
+      threshold = 0.8;
+      break;
+    case 'c':  // bottle detected
+      threshold = 3.0;
+      break;
   }
 }
 
