@@ -1,143 +1,133 @@
-# SmartGripperHackathon
+# Smart-Gripper
 
-### Project Structure Overview
-
-* **/src**
-  Contains the core implementation code that is deployed to and executed on the Gripper.
-
-* **/gui**
-  Provides an interactive graphical interface. An additional `README.md` file within this folder explains how to use the GUI.
-
-* **/docs**
-  Includes all reference materials used during development. Full books are provided to ensure consistency and completeness in documenting the model built in MATLAB.
-
-* **/object\_classification**
-  Contains code for object classification, which can be integrated with the GUI to enhance the overall user experience.
-
-Details regarding the simulation of the model are provided in the following section.
+**Smart Gripper** is a robotics project developed for the EESTech Challenge Final Round 2025, where it proudly secured **3rd place**. The system utilizes an Infineon motor controller (IFX007T Shield 2Go), an angle sensor (TLE5012B E1000), and a 3D magnetic sensor to provide intelligent, material-aware gripping functionality.
 
 ---
 
-- Simulations and Modeling
-  
-  In this folder we :
-  - Simulate the desired force we need to apply in a object through a fuzzy logic decision
-    
-      This script builds, visualises, and tests a Fuzzy-Inference System (FIS) called GripperFIS.
-      The controller estimates how much gripping force a robotic gripper should apply, given two object properties:
+## 🚀 How It Works
 
-      Variable	Role	Range	Linguistic terms (bell-shaped MFs)
-    
-        - Weight	Input	0 – 500 g	VeryLight · Light · Medium · Heavy
-    
-        - Hardness	Input	0 – 1 (soft → hard)	VerySoft · Soft · Hard · VeryHard
-    
-        - Force	Output	0 – 10 (arbitrary units)	VeryLow · Low · Medium · High
+The Smart Gripper controls the force applied to objects using a **PID controller** with parameters:
 
-      1 . Define inputs and outputs
-        addInput and addOutput create the three FIS variables.
-        Each variable is assigned 4 generalized bell membership functions (gbellmf) that overlap smoothly and look like Gaussian “bells”.
+- `kp = 1`
+- `ki = 0`
+- `kd = 0`
 
-        fis = addInput(fis,[0 500],'Name','Weight');
-        fis = addMF(fis,'Weight','gbellmf',[40 2 50],'Name','VeryLight');
-        ...
-        fis = addInput(fis,[0 1],'Name','Hardness');
-        ...
-        fis = addOutput(fis,[0 10],'Name','Force');
-        Parameter vector [a b c] means:
-        a = width, b = slope, c = centre of the bell.
+### Core Mechanism:
 
-        2 . Create the rule base (4 × 4 = 16 rules)
-          ruleList maps every combination of the two inputs to a force level.
+1. A **BLDC motor** drives the gripper to close.
+2. Two 3D magnetic sensors at the gripper’s edges detect magnetic field changes when pressure is applied.
+3. The **magnitude of the magnetic field** is proportional to the force on the object.
+4. The magnetic field serves as **feedback** for the PID controller.
+5. The **target force** is dynamically set based on the material identified by the onboard camera.
 
-          Example rule:
+### Supported Materials & Thresholds:
 
-              If Weight is Heavy and Hardness is Soft then Force is High
-          Rules are imported with addRule(fis,ruleList);.
+| Material | Threshold (Magnetic Field Magnitude) |
+|----------|--------------------------------------|
+| Balloon  | 0.8                                  |
+| Wood     | 3.0                                  |
+| Iron     | 10.0                                 |
 
-        3 . Visualise the system
-          plotfis shows a block diagram of the FIS.
+---
 
-          plotmf plots the membership functions for each variable.
+### Project Structure Overview
 
-          The surface plot (surf) illustrates how Force varies over the full Weight–Hardness grid.
+- `src/`
+Contains the core implementation code that is deployed to and executed on the Gripper.
 
-        4 . Quick test case
-          evalfis(fis,[300 0.4]) evaluates the controller for a 300 g object with medium hardness (0.4) and prints the recommended force.
-  - model the BLDC motor system we got from the documentation and we apply an adaptive pid controller for the control
+- `camera/`
+Contains the source code of the camera for material classification.
 
-      ⚙️ Adaptive PID Controller with BLDC Motor Simulation and Wiener Filtering
-        This MATLAB script simulates an adaptive PID control loop for a Brushless DC (BLDC) motor system. It includes:
+- `test/`
+Contains a simple code for testing communication of the gui with the arduino via serial port.
 
-        A 2st-order electromechanical model of a BLDC motor
+- `docs/`
+Contains the topic and challenge introduction slides
 
-        A PID controller that adapts its gains using gradient descent
 
-        A custom calculation of settling time to evaluate controller performance
+---
 
-        A Wiener filter for post-processing noisy output data
+## 🛠 Prerequisites
 
-        📌 Features  
-        🔧 PID Control with Online Tuning
-        The PID controller updates its parameters (Kp, Ki, Kd) at each time step based on the current error and the error in settling time, aiming to:
+- **Python 3.6+**
+- **Arduino IDE**
 
-        Track a given target speed
+---
 
-        Achieve a desired settling time
+## 🔧 Setup Instructions
 
-        🔄 BLDC Motor Model
-        The model consists of coupled electrical and mechanical dynamics:
- 
+### 1. Install XMC for Arduino
 
-        📉 Wiener Filter for Signal Denoising
-        After simulation, the noisy output (motor speed) is passed through a Wiener filter for noise suppression.
+Follow the instructions from the official [XMC for Arduino documentation](https://xmc-arduino.readthedocs.io/en/latest/installation-instructions.html) and make sure to use the **alternative installation link** provided [here](https://github.com/LinjingZhang/XMC-for-Arduino/releases/download/V3.5.3-beta/package_infineon_index.json).
 
-        📈 Output
-        Real-time PID gain updates printed in the console
 
-        Plots:
+### 2. Install Required Arduino Libraries
 
-          System response with adaptive PID tuning
+Search and install the following libraries using the Arduino Library Manager:
 
-          Denoised output using Wiener filtering
+- **XENSIV™ Angle Sensor TLx5012B**  
+  *(Used for reading motor position via diametrically magnetized magnets)*  
+  [Sensor Info](https://www.infineon.com/cms/de/product/sensor/magnetic-sensors/magnetic-position-sensors/angle-sensors/tle5012b-e1000/)
 
-        Example:
+- **XENSIV™ 3D Magnetic Sensor TLx493D**  
+  *(Used to measure magnetic field changes in X, Y, and Z directions)*  
+  [Sensor Info](https://www.infineon.com/cms/en/product/sensor/magnetic-sensors/magnetic-position-sensors/3d-magnetics/tle493d-a2b6/)
 
-          t=3.50, omega=5.42, settling=1.02, Kp=98.75, Ki=48.75, Kd=0.08
+- **Simple FOC Library**  
+  *(For Field Oriented Control of BLDC motors)*  
+  [Library Docs](https://docs.simplefoc.com)
 
-        📦 Main Components
+---
 
-        Section	Description
+## 🧰 Installation
 
-        for loop	Main simulation loop
+```bash
+git clone git@github.com:georrous6/Smart-Gripper.git
+cd Smart-Gripper
+pip install -r requirements.txt
+```
 
-        calculateSettlingTime()	Computes time until the output stabilizes within ±5% of target
-        gradient descent	Updates PID gains based on combined error
-        wiener2()	Applies Wiener filter to noisy signal
-        plot()	Shows system response and filtering results
+## ⚙️ Running the Project
 
-        🧠 Learning Logic
+### 1. Flash Gripper Firmware
+- Open `src/torque_control/` in Arduino IDE 
+- Select the board (*XMC4700 Relax Kit*) 
+- Select the correct serial port
+- Upload the sketch.
 
-        The learning step adjusts all PID gains equally using:
+### 2. Flash Test Code (Optional)
+- Open `test/` in Arduino IDE 
+- Select the board (*XMC1100 XMC2Go*) 
+- Select the correct serial port
+- Upload the sketch.
 
-        grad = 0.1 * (tracking_error + settling_time_error);
-        Kp = Kp - lr * grad;
+### 3. Run the GUI Application
 
-        ⚠️ Note: As we will see we achieved an optional pid for the dynamic system through control and learning for the parameters
+1. Launch the GUI application:
+```bash
+python main.py
+```
+2. Select the appropriate COM port from the dropdown menu.
+3. Click **Connect** to establish a connection.
+4. Use the camera to determine the type of object to grab.
+5. Use the control buttons:
 
-🛠️ System Parameters
+   - **Secure Grip** – Grabs an object (command `1`)
+   - **Release Grip** – Opens the gripper (command `2`)
+   - **Emergency Stop** – Immediately halts all movement (command `0`)
+6. Manually adjust the pressure applied to the grabbed object using the slider.
 
-Symbol	Description	Value
-R	Motor resistance	50 Ω
-L	Motor inductance	0.1 H
-Ke	Back EMF constant	1 V·s/rad
-Kt	Torque constant	1 Nm/A
-J	Rotor inertia	0.01 kg·m²
-B	Viscous friction	0.001 N·m·s
+#### Button behaviour:
+- Pressing the opposite button switches the action.
+- Pressing the same button again will stop the action (command: `0`).
 
-📊 Sample Visualizations
+## Troubleshooting
 
-✅ System response vs. target
+If you're unable to connect to the Arduino:
 
-🔵 Filtered signal using Wiener filter
+1. Confirm the Gripper is properly connected and that it has code which was already flashed to run.
+2. Verify that the correct COM port is selected.
+3. Ensure no other program is using the serial port (e.g., Arduino IDE).
+4. Check that the baud rate (115200) matches the value in your Arduino sketch.
+5. Press reset :)
     
