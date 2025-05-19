@@ -4,7 +4,7 @@ import serial
 import serial.tools.list_ports
 import threading
 import time
-from object_detector import detect_object  # Ensure file name is object_detector.py
+from camera.object_detector import detect_object
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
